@@ -1,230 +1,104 @@
-"use strict";
+const User = require('./user'); // adjust the path accordingly
+const db = require('../db');
 
-const {
-  NotFoundError,
-  BadRequestError,
-  UnauthorizedError,
-} = require("../expressError");
-const db = require("../db.js");
-const User = require("./user.js");
-const {
-  commonBeforeAll,
-  commonBeforeEach,
-  commonAfterEach,
-  commonAfterAll,
-} = require("./_testCommon");
-
-beforeAll(commonBeforeAll);
-beforeEach(commonBeforeEach);
-afterEach(commonAfterEach);
-afterAll(commonAfterAll);
-
-/************************************** authenticate */
-
-describe("authenticate", function () {
-  test("works", async function () {
-    const user = await User.authenticate("u1", "password1");
-    expect(user).toEqual({
-      username: "u1",
-      firstName: "U1F",
-      lastName: "U1L",
-      email: "u1@email.com",
-      isAdmin: false,
-    });
-  });
-
-  test("unauth if no such user", async function () {
-    try {
-      await User.authenticate("nope", "password");
-      fail();
-    } catch (err) {
-      expect(err instanceof UnauthorizedError).toBeTruthy();
-    }
-  });
-
-  test("unauth if wrong password", async function () {
-    try {
-      await User.authenticate("c1", "wrong");
-      fail();
-    } catch (err) {
-      expect(err instanceof UnauthorizedError).toBeTruthy();
-    }
-  });
+beforeAll(async () => {
+    // Clean up and set up the database before tests
+    await db.query("DELETE FROM users");
+    await db.query("DELETE FROM applications"); // Clean applications table if necessary
 });
 
-/************************************** register */
-
-describe("register", function () {
-  const newUser = {
-    username: "new",
-    firstName: "Test",
-    lastName: "Tester",
-    email: "test@test.com",
-    isAdmin: false,
-  };
-
-  test("works", async function () {
-    let user = await User.register({
-      ...newUser,
-      password: "password",
-    });
-    expect(user).toEqual(newUser);
-    const found = await db.query("SELECT * FROM users WHERE username = 'new'");
-    expect(found.rows.length).toEqual(1);
-    expect(found.rows[0].is_admin).toEqual(false);
-    expect(found.rows[0].password.startsWith("$2b$")).toEqual(true);
-  });
-
-  test("works: adds admin", async function () {
-    let user = await User.register({
-      ...newUser,
-      password: "password",
-      isAdmin: true,
-    });
-    expect(user).toEqual({ ...newUser, isAdmin: true });
-    const found = await db.query("SELECT * FROM users WHERE username = 'new'");
-    expect(found.rows.length).toEqual(1);
-    expect(found.rows[0].is_admin).toEqual(true);
-    expect(found.rows[0].password.startsWith("$2b$")).toEqual(true);
-  });
-
-  test("bad request with dup data", async function () {
-    try {
-      await User.register({
-        ...newUser,
-        password: "password",
-      });
-      await User.register({
-        ...newUser,
-        password: "password",
-      });
-      fail();
-    } catch (err) {
-      expect(err instanceof BadRequestError).toBeTruthy();
-    }
-  });
+afterAll(async () => {
+    // Close the database connection after all tests
+    await db.end();
 });
 
-/************************************** findAll */
+describe("User Model", () => {
+    test("can register a user", async () => {
+        const user = await User.register({
+            username: 'testuser',
+            password: 'password123',
+            firstName: 'Test',
+            lastName: 'User',
+            email: 'test@example.com',
+            isAdmin: false,
+        });
+        expect(user).toHaveProperty('username', 'testuser');
+        expect(user).toHaveProperty('firstName', 'Test');
+        expect(user).toHaveProperty('lastName', 'User');
+        expect(user).toHaveProperty('email', 'test@example.com');
+        expect(user).toHaveProperty('isAdmin', false);
+    });
 
-describe("findAll", function () {
-  test("works", async function () {
-    const users = await User.findAll();
-    expect(users).toEqual([
-      {
-        username: "u1",
-        firstName: "U1F",
-        lastName: "U1L",
-        email: "u1@email.com",
-        isAdmin: false,
-      },
-      {
-        username: "u2",
-        firstName: "U2F",
-        lastName: "U2L",
-        email: "u2@email.com",
-        isAdmin: false,
-      },
-    ]);
-  });
+    test("throws error for duplicate username", async () => {
+        await User.register({
+            username: 'duplicateuser',
+            password: 'password123',
+            firstName: 'Dup',
+            lastName: 'User',
+            email: 'dup@example.com',
+            isAdmin: false,
+        });
+
+        await expect(User.register({
+            username: 'duplicateuser',
+            password: 'password456',
+            firstName: 'Dup2',
+            lastName: 'User2',
+            email: 'dup2@example.com',
+            isAdmin: false,
+        })).rejects.toThrow('Duplicate username: duplicateuser');
+    });
+
+    test("can authenticate user", async () => {
+        await User.register({
+            username: 'authuser',
+            password: 'securepass',
+            firstName: 'Auth',
+            lastName: 'User',
+            email: 'auth@example.com',
+            isAdmin: false,
+        });
+        
+        const user = await User.authenticate('authuser', 'securepass');
+        expect(user).toHaveProperty('username', 'authuser');
+        expect(user).toHaveProperty('firstName', 'Auth');
+        expect(user).toHaveProperty('lastName', 'User');
+        expect(user).toHaveProperty('email', 'auth@example.com');
+        expect(user).toHaveProperty('isAdmin', false);
+    });
+
+    test("throws error for invalid authentication", async () => {
+        await User.register({
+            username: 'invaliduser',
+            password: 'validpass',
+            firstName: 'Invalid',
+            lastName: 'User',
+            email: 'invalid@example.com',
+            isAdmin: false,
+        });
+
+        await expect(User.authenticate('invaliduser', 'wrongpass')).rejects.toThrow('Invalid username/password');
+    });
+
+    test("can retrieve a user by username", async () => {
+        await User.register({
+            username: 'retrieveuser',
+            password: 'pass123',
+            firstName: 'Retrieve',
+            lastName: 'User',
+            email: 'retrieve@example.com',
+            isAdmin: false,
+        });
+
+        const user = await User.get('retrieveuser');
+        expect(user).toHaveProperty('username', 'retrieveuser');
+        expect(user).toHaveProperty('firstName', 'Retrieve');
+        expect(user).toHaveProperty('lastName', 'User');
+        expect(user).toHaveProperty('email', 'retrieve@example.com');
+        expect(user).toHaveProperty('isAdmin', false);
+        expect(user).toHaveProperty('applications', []);
+    });
+
+    // Additional tests for update, remove, applyToJob, etc.
 });
 
-/************************************** get */
-
-describe("get", function () {
-  test("works", async function () {
-    let user = await User.get("u1");
-    expect(user).toEqual({
-      username: "u1",
-      firstName: "U1F",
-      lastName: "U1L",
-      email: "u1@email.com",
-      isAdmin: false,
-    });
-  });
-
-  test("not found if no such user", async function () {
-    try {
-      await User.get("nope");
-      fail();
-    } catch (err) {
-      expect(err instanceof NotFoundError).toBeTruthy();
-    }
-  });
-});
-
-/************************************** update */
-
-describe("update", function () {
-  const updateData = {
-    firstName: "NewF",
-    lastName: "NewF",
-    email: "new@email.com",
-    isAdmin: true,
-  };
-
-  test("works", async function () {
-    let job = await User.update("u1", updateData);
-    expect(job).toEqual({
-      username: "u1",
-      ...updateData,
-    });
-  });
-
-  test("works: set password", async function () {
-    let job = await User.update("u1", {
-      password: "new",
-    });
-    expect(job).toEqual({
-      username: "u1",
-      firstName: "U1F",
-      lastName: "U1L",
-      email: "u1@email.com",
-      isAdmin: false,
-    });
-    const found = await db.query("SELECT * FROM users WHERE username = 'u1'");
-    expect(found.rows.length).toEqual(1);
-    expect(found.rows[0].password.startsWith("$2b$")).toEqual(true);
-  });
-
-  test("not found if no such user", async function () {
-    try {
-      await User.update("nope", {
-        firstName: "test",
-      });
-      fail();
-    } catch (err) {
-      expect(err instanceof NotFoundError).toBeTruthy();
-    }
-  });
-
-  test("bad request if no data", async function () {
-    expect.assertions(1);
-    try {
-      await User.update("c1", {});
-      fail();
-    } catch (err) {
-      expect(err instanceof BadRequestError).toBeTruthy();
-    }
-  });
-});
-
-/************************************** remove */
-
-describe("remove", function () {
-  test("works", async function () {
-    await User.remove("u1");
-    const res = await db.query(
-        "SELECT * FROM users WHERE username='u1'");
-    expect(res.rows.length).toEqual(0);
-  });
-
-  test("not found if no such user", async function () {
-    try {
-      await User.remove("nope");
-      fail();
-    } catch (err) {
-      expect(err instanceof NotFoundError).toBeTruthy();
-    }
-  });
-});

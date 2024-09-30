@@ -3,7 +3,6 @@
 /** Routes for users. */
 
 const jsonschema = require("jsonschema");
-
 const express = require("express");
 const { ensureLoggedIn } = require("../middleware/auth");
 const { BadRequestError } = require("../expressError");
@@ -14,14 +13,13 @@ const userUpdateSchema = require("../schemas/userUpdate.json");
 
 const router = express.Router();
 
-
 /** POST / { user }  => { user, token }
  *
  * Adds a new user. This is not the registration endpoint --- instead, this is
  * only for admin users to add new users. The new user being added can be an
  * admin.
  *
- * This returns the newly created user and an authentication token for them:
+ * Returns the newly created user and an authentication token for them:
  *  {user: { username, firstName, lastName, email, isAdmin }, token }
  *
  * Authorization required: login
@@ -43,7 +41,6 @@ router.post("/", ensureLoggedIn, async function (req, res, next) {
   }
 });
 
-
 /** GET / => { users: [ {username, firstName, lastName, email }, ... ] }
  *
  * Returns list of all users.
@@ -60,7 +57,6 @@ router.get("/", ensureLoggedIn, async function (req, res, next) {
   }
 });
 
-
 /** GET /[username] => { user }
  *
  * Returns { username, firstName, lastName, isAdmin }
@@ -76,7 +72,6 @@ router.get("/:username", ensureLoggedIn, async function (req, res, next) {
     return next(err);
   }
 });
-
 
 /** PATCH /[username] { user } => { user }
  *
@@ -103,7 +98,6 @@ router.patch("/:username", ensureLoggedIn, async function (req, res, next) {
   }
 });
 
-
 /** DELETE /[username]  =>  { deleted: username }
  *
  * Authorization required: login
@@ -117,6 +111,5 @@ router.delete("/:username", ensureLoggedIn, async function (req, res, next) {
     return next(err);
   }
 });
-
 
 module.exports = router;

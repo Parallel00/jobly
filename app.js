@@ -22,12 +22,11 @@ app.use(express.json());
 app.use(morgan("tiny"));
 app.use(authenticateJWT);
 
+// Register routes
 app.use("/auth", authRoutes);
 app.use("/companies", companiesRoutes);
 app.use("/users", usersRoutes);
 app.use("/jobs", jobRoute);
-
-console.log(jobRoute);
 
 /** Handle 404 errors -- this matches everything */
 app.use(function (req, res, next) {
@@ -36,7 +35,11 @@ app.use(function (req, res, next) {
 
 /** Generic error handler; anything unhandled goes here. */
 app.use(function (err, req, res, next) {
-  if (process.env.NODE_ENV !== "test") console.error(err.stack);
+  // Only print stack trace if not in test environment
+  if (process.env.NODE_ENV !== "test") {
+    console.error(err.stack);
+  }
+
   const status = err.status || 500;
   const message = err.message;
 

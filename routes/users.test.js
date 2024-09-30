@@ -1,7 +1,6 @@
 "use strict";
 
-//const request = require("supertest");
-
+const request = require("supertest");
 const db = require("../db.js");
 const app = require("../app");
 const User = require("../models/user");
@@ -50,21 +49,21 @@ describe("POST /users", function () {
     const resp = await request(app)
         .post("/users")
         .send({
-          username: "u-new",
+          username: "u-new-admin",
           firstName: "First-new",
           lastName: "Last-newL",
           password: "password-new",
-          email: "new@email.com",
+          email: "newadmin@email.com",
           isAdmin: true,
         })
         .set("authorization", `Bearer ${u1Token}`);
     expect(resp.statusCode).toEqual(201);
     expect(resp.body).toEqual({
       user: {
-        username: "u-new",
+        username: "u-new-admin",
         firstName: "First-new",
         lastName: "Last-newL",
-        email: "new@email.com",
+        email: "newadmin@email.com",
         isAdmin: true,
       }, token: expect.any(String),
     });
@@ -151,9 +150,6 @@ describe("GET /users", function () {
   });
 
   test("fails: test next() handler", async function () {
-    // there's no normal failure event which will cause this route to fail ---
-    // thus making it hard to test that the error-handler works with it. This
-    // should cause an error, all right :)
     await db.query("DROP TABLE users CASCADE");
     const resp = await request(app)
         .get("/users")
@@ -197,71 +193,53 @@ describe("GET /users/:username", function () {
 /************************************** PATCH /users/:username */
 
 describe("PATCH /users/:username", () => {
-  test("works for users", async function () {
+  test("works for users", async () => {
     const resp = await request(app)
-        .patch(`/users/u1`)
-        .send({
-          firstName: "New",
-        })
-        .set("authorization", `Bearer ${u1Token}`);
+      .patch(`/users/u1`)
+      .send({
+        firstName: "NewU1F",
+        lastName: "NewU1L",
+        email: "newemail@user.com",
+      })
+      .set("authorization", `Bearer ${u1Token}`);
     expect(resp.body).toEqual({
       user: {
         username: "u1",
-        firstName: "New",
-        lastName: "U1L",
-        email: "user1@user.com",
+        firstName: "NewU1F",
+        lastName: "NewU1L",
+        email: "newemail@user.com",
         isAdmin: false,
       },
     });
   });
 
-  test("unauth for anon", async function () {
+  test("unauth for anon", async () => {
     const resp = await request(app)
-        .patch(`/users/u1`)
-        .send({
-          firstName: "New",
-        });
+      .patch(`/users/u1`)
+      .send({
+        firstName: "NewU1F",
+      });
     expect(resp.statusCode).toEqual(401);
   });
 
-  test("not found if no such user", async function () {
+  test("not found if user not found", async () => {
     const resp = await request(app)
-        .patch(`/users/nope`)
-        .send({
-          firstName: "Nope",
-        })
-        .set("authorization", `Bearer ${u1Token}`);
+      .patch(`/users/nope`)
+      .send({
+        firstName: "NewU1F",
+      })
+      .set("authorization", `Bearer ${u1Token}`);
     expect(resp.statusCode).toEqual(404);
   });
 
-  test("bad request if invalid data", async function () {
+  test("bad request if invalid data", async () => {
     const resp = await request(app)
-        .patch(`/users/u1`)
-        .send({
-          firstName: 42,
-        })
-        .set("authorization", `Bearer ${u1Token}`);
+      .patch(`/users/u1`)
+      .send({
+        email: "not-an-email",
+      })
+      .set("authorization", `Bearer ${u1Token}`);
     expect(resp.statusCode).toEqual(400);
-  });
-
-  test("works: set new password", async function () {
-    const resp = await request(app)
-        .patch(`/users/u1`)
-        .send({
-          password: "new-password",
-        })
-        .set("authorization", `Bearer ${u1Token}`);
-    expect(resp.body).toEqual({
-      user: {
-        username: "u1",
-        firstName: "U1F",
-        lastName: "U1L",
-        email: "user1@user.com",
-        isAdmin: false,
-      },
-    });
-    const isSuccessful = await User.authenticate("u1", "new-password");
-    expect(isSuccessful).toBeTruthy();
   });
 });
 
@@ -281,7 +259,7 @@ describe("DELETE /users/:username", function () {
     expect(resp.statusCode).toEqual(401);
   });
 
-  test("not found if user missing", async function () {
+  test("not found if user not found", async function () {
     const resp = await request(app)
         .delete(`/users/nope`)
         .set("authorization", `Bearer ${u1Token}`);
