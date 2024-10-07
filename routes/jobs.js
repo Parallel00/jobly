@@ -1,7 +1,5 @@
 "use strict";
 
-/** Routes for jobs. */
-
 const jsonschema = require("jsonschema");
 
 const express = require("express");
@@ -59,6 +57,7 @@ router.get("/:id", async function (req, res, next) {
     return next(err);
   }
 });
+
 
 router.patch("/:id", ensureAdmin, async function (req, res, next) {
   try {

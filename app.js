@@ -11,7 +11,7 @@ const { authenticateJWT } = require("./middleware/auth");
 const authRoutes = require("./routes/auth");
 const companiesRoutes = require("./routes/companies");
 const usersRoutes = require("./routes/users");
-const jobRoute = require("./routes/jobs");
+const jobsRoutes = require("./routes/jobs");
 
 const morgan = require("morgan");
 
@@ -22,11 +22,11 @@ app.use(express.json());
 app.use(morgan("tiny"));
 app.use(authenticateJWT);
 
-// Register routes
 app.use("/auth", authRoutes);
 app.use("/companies", companiesRoutes);
 app.use("/users", usersRoutes);
-app.use("/jobs", jobRoute);
+app.use("/jobs", jobsRoutes);
+
 
 /** Handle 404 errors -- this matches everything */
 app.use(function (req, res, next) {
@@ -35,11 +35,7 @@ app.use(function (req, res, next) {
 
 /** Generic error handler; anything unhandled goes here. */
 app.use(function (err, req, res, next) {
-  // Only print stack trace if not in test environment
-  if (process.env.NODE_ENV !== "test") {
-    console.error(err.stack);
-  }
-
+  if (process.env.NODE_ENV !== "test") console.error(err.stack);
   const status = err.status || 500;
   const message = err.message;
 

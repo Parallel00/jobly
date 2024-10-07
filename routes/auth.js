@@ -1,6 +1,5 @@
 "use strict";
 
-/** Routes for authentication. */
 
 const jsonschema = require("jsonschema");
 
@@ -12,12 +11,6 @@ const userAuthSchema = require("../schemas/userAuth.json");
 const userRegisterSchema = require("../schemas/userRegister.json");
 const { BadRequestError } = require("../expressError");
 
-/** POST /auth/token:  { username, password } => { token }
- *
- * Returns JWT token which can be used to authenticate further requests.
- *
- * Authorization required: none
- */
 
 router.post("/token", async function (req, res, next) {
   try {
@@ -36,15 +29,6 @@ router.post("/token", async function (req, res, next) {
   }
 });
 
-
-/** POST /auth/register:   { user } => { token }
- *
- * user must include { username, password, firstName, lastName, email }
- *
- * Returns JWT token which can be used to authenticate further requests.
- *
- * Authorization required: none
- */
 
 router.post("/register", async function (req, res, next) {
   try {
